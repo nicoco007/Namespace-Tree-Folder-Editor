@@ -2,10 +2,11 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 
 namespace NamespaceTreeFolderEditor
 {
-    public class RootFolder
+    public class NamespaceTreeFolder
     {
         public string Guid { get; set; }
         public string Name { get; }
@@ -17,10 +18,12 @@ namespace NamespaceTreeFolderEditor
         public bool Enabled { get; }
         public string TargetKnownFolder { get; }
 
-        private static RegistryKey ClassesRoot = RegistryKey.OpenBaseKey(RegistryHive.ClassesRoot, Environment.Is64BitOperatingSystem ? RegistryView.Registry64 : RegistryView.Registry32);
-        private static RegistryKey CurrentUser = RegistryKey.OpenBaseKey(RegistryHive.CurrentUser, Environment.Is64BitOperatingSystem ? RegistryView.Registry64 : RegistryView.Registry32);
+        private static RegistryKey ClassesRoot32 = RegistryKey.OpenBaseKey(RegistryHive.ClassesRoot, RegistryView.Registry32);
+        private static RegistryKey CurrentUser32 = RegistryKey.OpenBaseKey(RegistryHive.CurrentUser, RegistryView.Registry32);
+        private static RegistryKey ClassesRoot = RegistryKey.OpenBaseKey(RegistryHive.ClassesRoot, RegistryView.Registry64);
+        private static RegistryKey CurrentUser = RegistryKey.OpenBaseKey(RegistryHive.CurrentUser, RegistryView.Registry64);
 
-        public RootFolder(string name, string path, string targetKnownFolder, int index, string iconPath, int iconIndex, bool showOnDesktop, bool enabled)
+        public NamespaceTreeFolder(string name, string path, string targetKnownFolder, int index, string iconPath, int iconIndex, bool showOnDesktop, bool enabled)
         {
             Name = name;
             Path = path;
@@ -32,43 +35,45 @@ namespace NamespaceTreeFolderEditor
             Enabled = enabled;
         }
 
-        public RootFolder(string guid, string name, string path, string targetKnownFolder, int index, string iconPath, int iconIndex, bool showOnDesktop, bool enabled) : this(name, path, targetKnownFolder, index, iconPath, iconIndex, showOnDesktop, enabled)
+        public NamespaceTreeFolder(string guid, string name, string path, string targetKnownFolder, int index, string iconPath, int iconIndex, bool showOnDesktop, bool enabled) : this(name, path, targetKnownFolder, index, iconPath, iconIndex, showOnDesktop, enabled)
         {
             Guid = guid?.ToUpper();
         }
 
-        private static readonly List<RootFolder> Folders = new List<RootFolder>();
+        private static readonly List<NamespaceTreeFolder> Folders = new List<NamespaceTreeFolder>();
 
-        public static List<RootFolder> GetFolders(bool force = false)
+        public static List<NamespaceTreeFolder> GetFolders(bool force = false)
         {
             if (Folders.Count == 0 || force)
             {
                 Folders.Clear();
 
-                var folderKeys = CurrentUser.OpenSubKey(@"SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Desktop\NameSpace");
+                var folderKeys32 = CurrentUser32.OpenSubKey(@"SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Desktop\NameSpace");
+                var folderKeys64 = CurrentUser.OpenSubKey(@"SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Desktop\NameSpace");
 
-                if (folderKeys != null)
+                if (folderKeys32 != null && folderKeys64 != null)
                 {
-                    var keys = folderKeys.GetSubKeyNames();
+                    var keys = folderKeys32.GetSubKeyNames().Union(folderKeys64.GetSubKeyNames()).ToList();
 
-                    RootFolder folder;
+                    NamespaceTreeFolder folder;
 
                     foreach (var guid in keys)
+                    {
+                        Debug.WriteLine(guid);
                         if ((folder = LoadFolder(guid)) != null)
                         {
                             Folders.Add(folder);
                             Debug.WriteLine(folder);
                         }
+                    }
                 }
             }
 
             return Folders;
         }
 
-        public static RootFolder LoadFolder(string guid)
+        public static NamespaceTreeFolder LoadFolder(string guid)
         {
-            if (!CheckDefinition(guid)) return null;
-
             var key = ClassesRoot.OpenSubKey(@"CLSID")?.OpenSubKey(guid);
 
             var icon = key?.OpenSubKey("DefaultIcon");
@@ -77,30 +82,33 @@ namespace NamespaceTreeFolderEditor
             var desktopNamespace = CurrentUser.OpenSubKey(@"SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Desktop\NameSpace");
             var hideDesktopIcons = CurrentUser.OpenSubKey(@"SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\HideDesktopIcons\NewStartPanel");
 
-            if (icon == null || instance == null || desktopNamespace == null || hideDesktopIcons == null || initPropertyBag == null)
-                return null;
+            var name = (string)key?.GetValue("");
+            var enabled = (int?)key?.GetValue("System.IsPinnedToNamespaceTree", 0) == 1;
+            var index = (int?)key?.GetValue("SortOrderIndex", 0) ?? 0;
+            var path = (string)initPropertyBag?.GetValue("TargetFolderPath");
+            var targetKnownFolder = (string)initPropertyBag?.GetValue("TargetKnownFolder");
 
-            var name = (string)key.GetValue("");
-            var enabled = (int)key.GetValue("System.IsPinnedToNamespaceTree", 0) == 1;
-            var index = (int)key.GetValue("SortOrderIndex", 0);
-            var path = (string)initPropertyBag.GetValue("TargetFolderPath");
-            var targetKnownFolder = (string)initPropertyBag.GetValue("TargetKnownFolder");
+            var iconStr = (string)icon?.GetValue("");
 
-            var iconStr = (string)icon.GetValue("");
-            var iconPath = iconStr.Contains(",") ? iconStr.Substring(0, iconStr.LastIndexOf(",", StringComparison.Ordinal)) : iconStr;
+            var iconPath = "";
             var iconIndex = 0;
 
-            if (iconStr.Contains(","))
-                int.TryParse(iconStr.Substring(iconStr.LastIndexOf(",", StringComparison.Ordinal) + 1), out iconIndex);
+            if (iconStr != null)
+            {
+                iconPath = iconStr.Contains(",") ? iconStr.Substring(0, iconStr.LastIndexOf(",", StringComparison.Ordinal)) : iconStr;
+
+                if (iconStr.Contains(","))
+                    int.TryParse(iconStr.Substring(iconStr.LastIndexOf(",", StringComparison.Ordinal) + 1), out iconIndex);
+            }
 
             var showOnDesktop = Array.Exists(hideDesktopIcons.GetValueNames(), str => str.Equals(guid)) && (int)hideDesktopIcons.GetValue(guid, 0) != 1;
 
-            return new RootFolder(guid, name, path, targetKnownFolder, index, iconPath, iconIndex, showOnDesktop, enabled);
+            return new NamespaceTreeFolder(guid, name, path, targetKnownFolder, index, iconPath, iconIndex, showOnDesktop, enabled);
         }
 
         public static bool CheckDefinition(string guid)
         {
-            // open all registry keys
+            // open registry key
             var key = ClassesRoot.OpenSubKey(@"CLSID")?.OpenSubKey(guid);
             
             if (key == null)
@@ -146,10 +154,17 @@ namespace NamespaceTreeFolderEditor
             return result;
         }
 
-        public static void AddFolder(RootFolder folder)
+        public static void AddFolder(NamespaceTreeFolder folder)
         {
             if (folder.Guid == null)
-                folder.Guid = "{" + System.Guid.NewGuid() + "}";
+            {
+                do
+                {
+                    folder.Guid = "{" + System.Guid.NewGuid().ToString().ToUpper() + "}";
+                }
+                while (ClassesRoot.OpenSubKey("CLSID").OpenSubKey(folder.Guid) != null);
+            }
+                
 
             // open all registry keys
             RegistryKey key = ClassesRoot.OpenSubKey(@"CLSID", true).CreateSubKey(folder.Guid);
@@ -216,6 +231,26 @@ namespace NamespaceTreeFolderEditor
             clsid.Close();
             desktopNamespace.Close();
             hideDesktopIcons.Close();
+            
+            if (Environment.Is64BitOperatingSystem)
+            {
+                RegistryKey clsid32 = ClassesRoot32.OpenSubKey("CLSID", true);
+                RegistryKey desktopNamespace32 = CurrentUser32.OpenSubKey(@"SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Desktop\NameSpace", true);
+                RegistryKey hideDesktopIcons32 = CurrentUser32.OpenSubKey(@"SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\HideDesktopIcons\NewStartPanel", true);
+
+                if (clsid32.OpenSubKey(guid) != null)
+                    clsid32.DeleteSubKeyTree(guid);
+
+                if (desktopNamespace32.OpenSubKey(guid) != null)
+                    desktopNamespace32.DeleteSubKey(guid);
+
+                if (Array.Exists(hideDesktopIcons32.GetValueNames(), str => str.Equals(guid)))
+                    hideDesktopIcons32.DeleteValue(guid);
+
+                clsid32.Close();
+                desktopNamespace32.Close();
+                hideDesktopIcons32.Close();
+            }
 
             Folders.RemoveAll(folder => folder.Guid == guid);
         }

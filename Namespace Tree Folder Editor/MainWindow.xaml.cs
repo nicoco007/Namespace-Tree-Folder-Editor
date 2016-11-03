@@ -30,7 +30,7 @@ namespace NamespaceTreeFolderEditor
             if (result != MessageBoxResult.Yes)
                 return;
 
-            foreach (var item in listView.SelectedItems.Cast<RootFolder>().ToArray())
+            foreach (var item in listView.SelectedItems.Cast<NamespaceTreeFolder>().ToArray())
             {
                 item.Remove();
                 listView.Items.Remove(item);
@@ -40,15 +40,21 @@ namespace NamespaceTreeFolderEditor
         private void editButton_Click(object sender, RoutedEventArgs e)
         {
             if (listView.SelectedItems.Count == 1)
-                showEditDialog((RootFolder)listView.SelectedItem);
+                showEditDialog((NamespaceTreeFolder)listView.SelectedItem);
         }
 
         private void LoadList()
         {
             listView.Items.Clear();
 
-            var folders = RootFolder.GetFolders();
-            folders.Sort((a, b) => { return b.Index - a.Index; });
+            var folders = NamespaceTreeFolder.GetFolders();
+            folders.Sort((a, b) =>
+            {
+                if (b.Index == a.Index && a.Name != null && b.Name != null)
+                    return a.Name.CompareTo(b.Name);
+                else
+                    return a.Index - b.Index;
+            });
 
             foreach (var folder in folders)
                 listView.Items.Add(folder);
@@ -57,10 +63,10 @@ namespace NamespaceTreeFolderEditor
         private void listView_MouseDoubleClick(object sender, System.Windows.Input.MouseButtonEventArgs e)
         {
             if (listView.SelectedItems.Count == 1)
-                showEditDialog((RootFolder)listView.SelectedItem);
+                showEditDialog((NamespaceTreeFolder)listView.SelectedItem);
         }
 
-        private void showEditDialog(RootFolder rootFolder = null)
+        private void showEditDialog(NamespaceTreeFolder rootFolder = null)
         {
             var dialog = new EditDialog();
             dialog.ShowDialog(rootFolder);

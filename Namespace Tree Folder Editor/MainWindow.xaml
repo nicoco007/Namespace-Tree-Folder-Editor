@@ -15,7 +15,7 @@
                         <GridViewColumn Header="Name" Width="200">
                             <GridViewColumn.CellTemplate>
                                 <DataTemplate>
-                                    <TextBlock Text="{Binding Name}"/>
+                                    <TextBlock Text="{Binding Name, TargetNullValue='(undefined)'}"/>
                                 </DataTemplate>
                             </GridViewColumn.CellTemplate>
                         </GridViewColumn>
@@ -29,7 +29,7 @@
                         <GridViewColumn Header="Enabled" Width="100">
                             <GridViewColumn.CellTemplate>
                                 <DataTemplate>
-                                    <TextBlock Text="{Binding Enabled}"/>
+                                    <TextBlock Text="{Binding Enabled, TargetNullValue='(undefined)'}"/>
                                 </DataTemplate>
                             </GridViewColumn.CellTemplate>
                         </GridViewColumn>

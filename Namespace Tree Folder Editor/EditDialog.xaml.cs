@@ -1,5 +1,6 @@
 ﻿using MahApps.Metro.Controls;
 using MahApps.Metro.Controls.Dialogs;
+using System;
 using System.IO;
 using System.Threading.Tasks;
 using System.Windows;
@@ -8,7 +9,7 @@ namespace NamespaceTreeFolderEditor
 {
     public partial class EditDialog : MetroWindow
     {
-        RootFolder initialFolder = null;
+        NamespaceTreeFolder initialFolder = null;
 
         public EditDialog()
         {
@@ -21,7 +22,7 @@ namespace NamespaceTreeFolderEditor
             base.ShowDialog();
         }
 
-        public void ShowDialog(RootFolder rootFolder)
+        public void ShowDialog(NamespaceTreeFolder rootFolder)
         {
             initialFolder = rootFolder;
 
@@ -62,7 +63,7 @@ namespace NamespaceTreeFolderEditor
             {
                 await ShowErrorMessage("Please enter a path.");
             }
-            else if (!Directory.Exists(pathTextBox.Text) && initialFolder?.TargetKnownFolder == null)
+            else if (!Directory.Exists(Environment.ExpandEnvironmentVariables(pathTextBox.Text)) && initialFolder?.TargetKnownFolder == null)
             {
                 await ShowErrorMessage("The selected path does not exist.");
             }
@@ -74,7 +75,7 @@ namespace NamespaceTreeFolderEditor
             {
                 await ShowErrorMessage("Please enter an icon path.");
             }
-            else if (!File.Exists(iconPathTextBox.Text))
+            else if (!File.Exists(Environment.ExpandEnvironmentVariables(iconPathTextBox.Text)))
             {
                 await ShowErrorMessage("The selected icon file does not exist.");
             }
@@ -84,19 +85,19 @@ namespace NamespaceTreeFolderEditor
             }
             else
             {
-                RootFolder folder = new RootFolder(
+                NamespaceTreeFolder folder = new NamespaceTreeFolder(
                     initialFolder?.Guid,
                     nameTextBox.Text,
-                    !string.IsNullOrEmpty(pathTextBox.Text) ? pathTextBox.Text : null,
+                    !string.IsNullOrEmpty(pathTextBox.Text) ? Environment.ExpandEnvironmentVariables(pathTextBox.Text) : null,
                     initialFolder?.TargetKnownFolder,
                     (int?)indexNumUpDown.Value ?? 0,
-                    iconPathTextBox.Text,
+                    Environment.ExpandEnvironmentVariables(iconPathTextBox.Text),
                     (int?)iconIndexNumUpDown.Value ?? 0,
                     showOnDesktopCheckBox.IsChecked ?? false,
                     enabledCheckBox.IsChecked ?? false
                 );
 
-                RootFolder.AddFolder(folder);
+                NamespaceTreeFolder.AddFolder(folder);
 
                 Close();
             }
