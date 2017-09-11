@@ -9,4 +9,6 @@ build:
   verbosity: minimal
 
 artifacts:
-- path: 'Namespace Tree Folder Editor\bin\Release\Namespace Tree Folder Editor.exe'
+  - path: 'Namespace Tree Folder Editor\bin\$(configuration)\*'
+    name: NamespaceTreeFolderEditor
+    type: zip
