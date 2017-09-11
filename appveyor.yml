@@ -8,7 +8,8 @@ before_build:
 build:
   verbosity: minimal
 
+after_build:
+  - 7z a NamespaceTreeFolderEditor.zip %APPVEYOR_BUILD_FOLDER%\Namespace Tree Folder Editor\bin\$(configuration)\*.*
+
 artifacts:
-  - path: 'Namespace Tree Folder Editor\bin\$(configuration)\*'
-    name: NamespaceTreeFolderEditor
-    type: zip
+  - path: 'NamespaceTreeFolderEditor.zip'
