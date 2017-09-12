@@ -1,3 +1,3 @@
 # Namespace Tree Folder Editor
 
-[![Build Status](https://ci.gnyra.com/job/Namespace%20Tree%20Folder%20Editor/badge/icon)](https://ci.gnyra.com/blue/organizations/jenkins/Namespace%20Tree%20Folder%20Editor/)
+[![Build Status](https://ci.gnyra.com/job/nicoco007/job/Namespace-Tree-Folder-Editor/job/master/badge/icon)](https://ci.gnyra.com/blue/organizations/jenkins/nicoco007%2FNamespace-Tree-Folder-Editor)
